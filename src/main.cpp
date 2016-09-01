@@ -2,7 +2,7 @@
 Title: Standard2D
 File Name: Main.cpp
 Copyright � 2016
-Original authors: Brockton Roth
+Author: David Erbelding
 Written under the supervision of David I. Schwartz, Ph.D., and
 supported by a professional development seed grant from the B. Thomas
 Golisano College of Computing & Information Sciences
@@ -20,37 +20,12 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 */
+
+
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
-#include <iostream>
-#include <fstream>
-#include <vector>
-
-// GLuint stands for open[GL] [U]nsigned [Int].
-// It is literally a typedefed unsigned int.
-// OpenGL uses these as references to the graphics resources you create.
-
-// These will be references to shaders.
-// A vertex shader is a short program that operates on each vertex that is sent to the gpu, and outputs modified vertex information.
-// In this case, our vertex shader will just pass the vertex information along without doing anything to it.
-GLuint vertex_shader;
-
-
-// A fragment shader (also known as pixel shader), operates on each fragment or pixel before it is drawn on the screen.
-// The final result is a colored pixel.
-GLuint fragment_shader;
-
-
-// This will be a reference to the shader program that will run on the GPU.
-// In openGL, a shader program is a "pipeline" of shaders that all run together.
-// We will later create one with glCreateProgram().
-GLuint program;
 
 
 // Vbo stands for Vertex Buffer Object
@@ -58,87 +33,16 @@ GLuint program;
 GLuint vbo;
 
 
-// This function reads text from a file and returns it as a string.
-// We will use it to get our shader code from glsl files.
-std::string readFile(std::string fileName)
+// GLuint is an open[GL] [U]nsigned [Int].
+// It is literally just a typedefed unsigned int.
+// OpenGL uses these as references to the internal graphics resources you create.
+
+
+// This function resizes the viewport (rectangle gl renders to inside the window) to match the size of the window.
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-	std::string outputText;
-	std::string line;
-
-	// We choose ifstream and std::ios::in because we are opening the file for input into our program.
-	// If we were writing to the file, we would use ofstream and std::ios::out.
-	std::ifstream file = std::ifstream(fileName, std::ios::in);
-
-	// This checks to make sure that we didn't encounter any errors when getting the file.
-	if (!file.good())
-	{
-		std::cout << "Can't read file: " << fileName.data() << std::endl;
-
-		// Return so we don't error out.
-		return "";
-	}
-
-	// ifstream keeps an internal "get" position determining the location of the element to be read next
-	// seekg allows you to modify this location, and tellg allows you to get this location
-	// This location is stored as a streampos member type, and the parameters passed in must be of this type as well
-	// seekg parameters are (offset, direction) or you can just use an absolute (position).
-	// The offset parameter is of the type streamoff, and the direction is of the type seekdir (an enum which can be ios::beg, ios::cur, or ios::end referring to the beginning,
-	// current position, or end of the stream).
-	file.seekg(0, std::ios::end);					// Moves the "get" position to the end of the file.
-	outputText.resize((unsigned int)file.tellg());	// Resizes the shaderCode string to the size of the file being read, given that tellg will give the current "get" which is at the end of the file.
-	file.seekg(0, std::ios::beg);					// Moves the "get" position to the start of the file.
-
-													// File streams contain two member functions for reading and writing binary data (read, write). The read function belongs to ifstream, and the write function belongs to ofstream.
-													// The parameters are (memoryBlock, size) where memoryBlock is of type char* and represents the address of an array of bytes are to be read from/written to.
-													// The size parameter is an integer that determines the number of characters to be read/written from/to the memory block.
-	file.read(&outputText[0], outputText.size());	// Reads from the file (starting at the "get" position which is currently at the start of the file) and writes that data to the beginning
-													// of the shaderCode variable, up until the full size of shaderCode. This is done with binary data, which is why we must ensure that the sizes are all correct.
-	
-
-	file.close(); // Now that we're done, close the file and return the string.
-
-	return outputText;
+	glViewport(0, 0, width, height);
 }
-
-// This function will take shader code we've written and return a GLuint as a reference to the compiled shader.
-// It only requires the shader source code and the shader type.
-GLuint createShader(std::string sourceCode, GLenum shaderType)
-{
-	// glCreateShader, creates a shader given a type (such as GL_VERTEX_SHADER) and returns a GLuint reference to that shader.
-	GLuint shader = glCreateShader(shaderType);
-	const char *shader_code_ptr = sourceCode.c_str(); // We establish a pointer to our shader code string
-	const int shader_code_size = sourceCode.size();   // And we get the size of that string.
-
-													  // glShaderSource replaces the source code in a shader object
-													  // It takes the reference to the shader (a GLuint), a count of the number of elements in the string array (in case you're passing in multiple strings), a pointer to the string array
-													  // that contains your source code, and a size variable determining the length of the array.
-	glShaderSource(shader, 1, &shader_code_ptr, &shader_code_size);
-	glCompileShader(shader); // This just compiles the shader, given the source code.
-
-	GLint isCompiled = 0;
-
-	// Check the compile status to see if the shader compiled correctly.
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
-
-	if (isCompiled == GL_FALSE)
-	{
-		char infolog[1024];
-		glGetShaderInfoLog(shader, 1024, NULL, infolog);
-
-		// Print the compile error.
-		std::cout << "The shader failed to compile with the error:" << std::endl << infolog << std::endl;
-
-		// Provide the infolog in whatever manor you deem best.
-		// Exit with failure.
-		glDeleteShader(shader); // Don't leak the shader.
-
-								// NOTE: I almost always put a break point here, so that instead of the program continuing with a deleted/failed shader, it stops and gives me a chance to look at what may
-								// have gone wrong. You can check the console output to see what the error was, and usually that will point you in the right direction.
-	}
-
-	return shader;
-}
-
 
 int main(int argc, char **argv)
 {
@@ -146,136 +50,180 @@ int main(int argc, char **argv)
 	glfwInit();
 
 	// Creates a window given (width, height, title, monitorPtr, windowPtr).
-	// Don't worry about the last two, as they have to do with controlling which monitor to display on and having a reference to other windows. Leaving them as nullptr is fine.
+	// The last two control monitors for fullescreen mode, and using multiple windows. Leaving them as nullptr is fine.
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Hello Triangle!", nullptr, nullptr);
 
-	// Makes the OpenGL context current for the created window.
+	// Changes our current OpenGL context to match that of the window.
+	// This becomes more complex in relation to threading, but essentially tells openGL to use this window.
 	glfwMakeContextCurrent(window);
 
-	// Sets the number of screen updates to wait before swapping the buffers.
-	glfwSwapInterval(1);
+	// Here we set up a callback with our viewport resizing function.
+	// If the window changes size, we will resize the viewport.
+	/// Try commenting this out and see what happens when you resize.
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	// Initializes the glew library
+	// Initializes the glew library, which adds some functionality we will need.
 	glewInit();
 
-	// Enables the depth test, which you will want in most cases. You can disable this in the render loop if you need to.
-	glEnable(GL_DEPTH_TEST);
 
-	// Create an std::vector and put our vertices into it. These are just hardcoded values here defined once.
-	std::vector<glm::vec2> vertices;//our vertex positions
-	vertices.push_back(glm::vec2(0.25, -0.25));
-	vertices.push_back(glm::vec2(-0.25, -0.25));
-	vertices.push_back(glm::vec2(0.25, 0.25));
 
-	// This generates buffer object names
-	// The first parameter is the number of buffer objects, and the second parameter is a pointer to an array of buffer objects (yes, before this call, vbo was an empty variable)
-	// (In this example, there's only one buffer object.)
+
+
+
+
+
+	// Create data needed to render a triangle.
+
+
+	// Create an array of vertices (this is our triangle coordinate data)
+	// OpenGL draws geometry using screen coordinates.
+	// (-1, -1) is the bottom left corner of the screen, and (1, 1) is the top right corner.
+	/// Try changing them to see what happens.
+	float vertices[] = {
+		-.5, -.5,
+		.5, .5,
+		.5, -.5 };
+
+	// This function makes space for our vertex buffer object
+	// The first parameter is the number of buffer objects we want to make space for.
+	// The second parameter is a pointer to an empty GLuint, which the function will fill. (in this case our vbo)
+	// Once the buffers have been created, the function puts a reference to them in our vbo variable.
 	glGenBuffers(1, &vbo);
 
-	// Binds a named buffer object to the specified buffer binding point. Give it a target (GL_ARRAY_BUFFER) to determine where to bind the buffer.
-	// There are several different target parameters, GL_ARRAY_BUFFER is for vertex attributes, feel free to Google the others to find out what else there is.
-	// The second paramter is the buffer object reference. If no buffer object with the given name exists, it will create one.
-	// Buffer object names are unsigned integers (like vbo). Zero is a reserved value, and there is no default buffer for each target (targets, like GL_ARRAY_BUFFER).
-	// Passing in zero as the buffer name (second parameter) will result in unbinding any buffer bound to that target, and frees up the memory.
+
+	// This assigns assigns our vbo to a binding location called GL_ARRAY_BUFFER.
+	// Any other functions that operate on GL_ARRAY_BUFFER will be using the currently bound vbo.
+	// Binding with another vbo replaces previous one. Binding with 0 unbinds without binding anything new.
+	// Other binding locations can be used for different kinds of buffers.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-	// Creates and initializes a buffer object's data.
-	// First parameter is the target, second parameter is the size of the buffer, third parameter is a pointer to the data that will copied into the buffer, and fourth parameter is the
-	// expected usage pattern of the data. Possible usage patterns: GL_STREAM_DRAW, GL_STREAM_READ, GL_STREAM_COPY, GL_STATIC_DRAW, GL_STATIC_READ, GL_STATIC_COPY, GL_DYNAMIC_DRAW,
-	// GL_DYNAMIC_READ, or GL_DYNAMIC_COPY
-	// Stream means that the data will be modified once, and used only a few times at most. Static means that the data will be modified once, and used a lot. Dynamic means that the data
-	// will be modified repeatedly, and used a lot. Draw means that the data is modified by the application, and used as a source for GL drawing. Read means the data is modified by
-	// reading data from GL, and used to return that data when queried by the application. Copy means that the data is modified by reading from the GL, and used as a source for drawing.
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * 3, &vertices[0], GL_STATIC_DRAW);
 
-	// By default, all client-side capabilities are disabled, including all generic vertex attribute arrays.
-	// When enabled, the values in a generic vertex attribute array will be accessed and used for rendering when calls are made to vertex array commands (like glDrawArrays/glDrawElements)
-	// A GL_INVALID_VALUE will be generated if the index parameter is greater than or equal to GL_MAX_VERTEX_ATTRIBS
-	glEnableVertexAttribArray(0);
+	// Here we copy or "buffer" our vertices into the vbo thats bound to GL_ARRAY_BUFFER.
+	// We have to pass the size, and location of the vertices in memory.
+	// The last parameter tells openGL how we plan on using the data.
+	// In this example we are using STATIC, because our data won't change, and DRAW, because we will send it to the GPU to be drawn.
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6, &vertices[0], GL_STATIC_DRAW);
 
-	// Defines an array of generic vertex attribute data. Takes an index, a size specifying the number of components (in this case, floats)(has a max of 4)
-	// The third parameter, type, can be GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_FIXED, or GL_FLOAT
-	// The fourth parameter specifies whether to normalize fixed-point data values, the fifth parameter is the stride which is the offset (in bytes) between generic vertex attributes
-	// The fifth parameter is a pointer to the first component of the first generic vertex attribute in the array. If named buffer object is bound to GL_ARRAY_BUFFER (and it is, in this case)
-	// then the pointer parameter is treated as a byte offset into the buffer object's data.
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
 
-	// You'll note sizeof(VertexFormat) is our stride, because each vertex contains data that adds up to that size.
-	// You'll also notice we offset this parameter by 16 bytes, this is because the vec3 position attribute is after the vec4 color attribute. A vec4 has 4 floats, each being 4 bytes
-	// so we offset by 4*4=16 to make sure that our first attribute is actually the position. The reason we put position after color in the struct has to do with padding.
-	// For more info on padding, Google it.
+	// Here we unbind the GL_ARRAY_BUFFER
+	// We're only drawing one thing, so this isn't required, but it's good practice, and can help prevent bugs.
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
 
-	// Read in the shader code from a file.
-	//std::string vertShader = readFile("VertexShader.glsl");
-	//std::string fragShader = readFile("FragmentShader.glsl");
 
-	// createShader consolidates all of the shader compilation code
-	//vertex_shader = createShader(vertShader, GL_VERTEX_SHADER);
-	//fragment_shader = createShader(fragShader, GL_FRAGMENT_SHADER);
 
-	// A shader is a program that runs on your GPU instead of your CPU. In this sense, OpenGL refers to your groups of shaders as "programs".
-	// Using glCreateProgram creates a shader program and returns a GLuint reference to it.
-	program = glCreateProgram();
-	//glAttachShader(program, vertex_shader);		// This attaches our vertex shader to our program.
-	//glAttachShader(program, fragment_shader);	// This attaches our fragment shader to our program.
-
-												// This links the program, using the vertex and fragment shaders to create executables to run on the GPU.
-	glLinkProgram(program);
-	// End of shader and program creation
-
-	// This is not necessary, but I prefer to handle my vertices in the clockwise order. glFrontFace defines which face of the triangles you're drawing is the front.
-	// Essentially, if you draw your vertices in counter-clockwise order, by default (in OpenGL) the front face will be facing you/the screen. If you draw them clockwise, the front face
-	// will face away from you. By passing in GL_CW to this function, we are saying the opposite, and now the front face will face you if you draw in the clockwise order.
-	// If you don't use this, just reverse the order of the vertices in your array when you define them so that you draw the points in a counter-clockwise order.
-	glFrontFace(GL_CW);
-
-	// This is also not necessary, but more efficient and is generally good practice. By default, OpenGL will render both sides of a triangle that you draw. By enabling GL_CULL_FACE,
-	// we are telling OpenGL to only render the front face. This means that if you rotated the triangle over the X-axis, you wouldn't see the other side of the triangle as it rotated.
-	glEnable(GL_CULL_FACE);
-
-	// Determines the interpretation of polygons for rasterization. The first parameter, face, determines which polygons the mode applies to.
-	// The face can be either GL_FRONT, GL_BACK, or GL_FRONT_AND_BACK
-	// The mode determines how the polygons will be rasterized. GL_POINT will draw points at each vertex, GL_LINE will draw lines between the vertices, and
-	// GL_FILL will fill the area inside those lines.
+	// Tell OpenGL how to render the vertices we send.
+	// The first parameter sets which side is being rendered (GL_FRONT, GL_BACK, or GL_FRONT_AND_BACK)
+	// The second parameter sets the "polygon mode" (GL_POINT, GL_LINE, GL_FILL) try them out!
 	glPolygonMode(GL_FRONT, GL_FILL);
 
-	// Enter the main loop.
+
+
+
+
+
+
+	// Main Loop
+
+
 	while (!glfwWindowShouldClose(window))
 	{
+		// Clear the screen
+		// Tell openGL which "buffer" we want to clear
+		// This takes a bitfield, meaning multiple buffers can be cleared at the same time with |
+		glClear(GL_COLOR_BUFFER_BIT);
 
-		// Clear the color buffer and the depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// Clear the screen to black nothingness
+		/// This can be changed to any rbga color. Values are between 0 and 1.
+		glClearColor(0.0, 0.0, 0.0, 0.0);
+		
 
-		// Clear the screen to black
-		glClearColor(0.0, 0.0, 0.0, 1.0);
 
-		// Tell OpenGL to use the shader program you've created.
-		//glUseProgram(program);
 
-		// Draw 3 vertices from the buffer as GL_TRIANGLES
-		// There are several different drawing modes, GL_TRIANGLES takes every 3 vertices and makes them a triangle.
-		// For reference, GL_TRIANGLE_STRIP would take each additional vertex after the first 3 and consider that a
-		// triangle with the previous 2 vertices (so you could make 2 triangles with 4 vertices)
+
+
+
+
+
+
+		// Prepare to draw geometry
+
+		// A Vertex Attribute Array is a collection of information about a vbo on the GPU.
+		// The index indicates where the information will be located (for this specific draw call).
+		// OpenGL defines a maximum number of these with a constant named GL_MAX_VERTEX_ATTRIBS.
+		GLuint vertexAttribArrayIndex = 0;
+
+		// Bind the vbo we want to use
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+		// Here we set up our vertexAttribArray with the following:
+		// 1) the index of the vertexAttribArray we want to use.
+		// 2) the number of values each vertex has: 2 floats (max 4)
+		// 3) the type that each piece of data is: GL_FLOAT (OpenGL uses a constant)
+		// 4) wether or not to normalize the vectors: false (useful if vectors are directions)
+		// 5) the stride (the space in bytes) between vertices. Ours is the same as the size, but it can be different.
+		// 6) the offset into the buffer where we want to start. (the beginning)
+		// This function uses whatever buffer is currently bound to the GL_ARRAY_BUFFER
+		glVertexAttribPointer(vertexAttribArrayIndex, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 0, (void*) (sizeof(float) * 0));
+
+		// At this point we are done using our vbo, so we can unbind it.
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+
+
+
+
+
+
+		// Next we have to tell OpenGL that we intend to use the Vertex Attribute Array at the index we just set up.
+		// If we don't, the data will never be sent to the gpu.
+		glEnableVertexAttribArray(vertexAttribArrayIndex);
+
+		// FINALLY, we get to our draw call.
+		// 0 is the offset of our first vertex.
+		// 3 is the number of vertices we want to use.
+		// We also select the draw mode here:
+		// GL_TRIANGLES takes every 3 vertices and draws them as a triangle.
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
-		// Swaps the back buffer to the front buffer
-		// Remember, you're rendering to the back buffer, then once rendering is complete, you're moving the back buffer to the front so it can be displayed.
+
+		// When we are finished using our Vertex Attribute Array, we disable it.
+		// This isn't required, because we are only rendering one object, but it's good practice.
+		glDisableVertexAttribArray(vertexAttribArrayIndex);
+
+
+
+
+
+
+
+		// So we've drawn our geometry, but it's actually being written to an offscreen image called the back buffer.
+		// This prevents the image on screen from displaying to your monitor halfway through rendering.
+		// Once rendering is complete, we can swap the image on screen with the one in the background.
 		glfwSwapBuffers(window);
 
 		// Checks to see if any events are pending and then processes them.
+		// With this, we can get input, or update the viewport when the window resizes.
 		glfwPollEvents();
+
 	}
 
-	// After the program is over, cleanup your data!
-	glDeleteShader(vertex_shader);
-	glDeleteShader(fragment_shader);
-	glDeleteProgram(program);
-	// Note: If at any point you stop using a "program" or shaders, you should free the data up then and there.
 
+
+
+
+
+
+
+	// the opposite of glGenBuffers from above.
+	// It's important to delete buffers when finished using them, or you will have memory leaks!
 	glDeleteBuffers(1, &vbo);
+
 
 	// Frees up GLFW memory
 	glfwTerminate();
 
+	// End of Program.
 	return 0;
 }
