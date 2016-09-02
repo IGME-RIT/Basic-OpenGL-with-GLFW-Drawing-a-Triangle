@@ -1,5 +1,5 @@
-/*
-Title: Standard2D
+﻿/*
+Title: Drawing a Triangle
 File Name: Main.cpp
 Copyright � 2016
 Author: David Erbelding
