@@ -112,20 +112,7 @@ int main(int argc, char **argv)
 
 
 
-	// Tell OpenGL how to render the vertices we send.
-	// The first parameter sets which side is being rendered (GL_FRONT, GL_BACK, or GL_FRONT_AND_BACK)
-	// The second parameter sets the "polygon mode" (GL_POINT, GL_LINE, GL_FILL) try them out!
-	glPolygonMode(GL_FRONT, GL_FILL);
-
-
-
-
-
-
-
 	// Main Loop
-
-
 	while (!glfwWindowShouldClose(window))
 	{
 		// Clear the screen
