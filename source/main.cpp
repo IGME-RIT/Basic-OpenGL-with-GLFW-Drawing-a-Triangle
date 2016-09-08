@@ -147,11 +147,11 @@ int main(int argc, char **argv)
 		// 1) the index of the vertexAttribArray we want to use.
 		// 2) the number of values each vertex has: 2 floats (max 4)
 		// 3) the type that each piece of data is: GL_FLOAT (OpenGL uses a constant)
-		// 4) wether or not to normalize the vectors: false (useful if vectors are directions)
-		// 5) the stride (the space in bytes) between vertices. Ours is the same as the size, but it can be different.
-		// 6) the offset into the buffer where we want to start. (the beginning)
+		// 4) whether or not to normalize the vectors: false (useful if vectors are directions)
+		// 5) the stride (length in bytes) between the data. Ours is the same as the size, but it can be different. (storing additional data with each vertex)
+		// 6) the offset into the buffer where we want to start. (the beginning) (For some reason this is a pointer)
 		// This function uses whatever buffer is currently bound to the GL_ARRAY_BUFFER
-		glVertexAttribPointer(vertexAttribArrayIndex, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 0, (void*) (sizeof(float) * 0));
+		glVertexAttribPointer(vertexAttribArrayIndex, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*) (sizeof(float) * 0));
 
 		// At this point we are done using our vbo, so we can unbind it.
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
